@@ -1,0 +1,109 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+import numpy as np
+import pandas as pd
+from google.cloud import bigquery
+from google.oauth2 import service_account
+import pandas_gbq
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+import joblib
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+
+def load_data():
+    logging.info("Loading data from BigQuery...")
+    client = bigquery.Client(project="mlops-retail-quant")
+    query = "SELECT * FROM `mlops-retail-quant.retail_dataset.raw_data_table`"
+    df = client.query(query).to_dataframe()
+    return df
+
+
+def clean_data(df):
+    logging.info("Cleaning data...")
+    df = df.dropna(subset="customer_id")
+    df = df[~df.invoice_no.str.contains('C', na=False)]
+    df = df[df['quantity'] > 0]
+    df = df[df['unit_price'] > 0]
+    df = df.drop_duplicates()
+    # Remove outliers from 'quantity' and 'unit_price'
+    df = remove_outliers(df, 'quantity')
+    df = remove_outliers(df, 'unit_price')
+    return df
+
+
+def remove_outliers(df, column):
+    logging.info(f"Removing outliers from column: {column}...")
+    Q1 = df[column].quantile(0.25)
+    Q3 = df[column].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    return df[(df[column] >= lower_bound) & (df[column] <= upper_bound)]
+
+
+def create_rfmt_features(df):
+    logging.info("Creating RFMT features...")
+    df['total'] = df['quantity'] * df['unit_price']
+    latest_date = df['invoice_date'].max()
+    RFM = df.groupby('customer_id').agg(
+        Recency=('invoice_date', lambda x: (latest_date - x.max()).days),
+        Frequency=('invoice_no', 'nunique'),
+        Monetary=('total', 'sum'),
+        Tenure=('invoice_date', lambda x: (x.max() - x.min()).days)
+    )
+    
+    RFM['Interpurchase_Time'] = RFM['Tenure'] / RFM['Frequency']
+    RFMT = RFM[['Recency', 'Frequency', 'Monetary', 'Interpurchase_Time']]
+    return RFMT
+
+def scale_rfmt_data(RFMT):
+    logging.info("Scaling RFMT data...")
+    scaler = StandardScaler()
+    scaler = scaler.fit(RFMT)
+    joblib.dump(scaler, 'models/scaler_model.pkl')
+    logging.info("Scaler saved successfully.")
+    
+    rfmt_scaled = scaler.transform(RFMT)
+    return rfmt_scaled
+
+def train_model(RFMT, rfmt_scaled):
+    logging.info("Training clustering model...")
+    kmeans = KMeans(n_clusters=5, random_state=42)
+    kmeans.fit(rfmt_scaled)
+    RFMT['Cluster'] = kmeans.predict(rfmt_scaled)
+
+    score = silhouette_score(rfmt_scaled, kmeans.labels_, metric='euclidean')
+    logging.info(f"Silhouette Score: {score}")
+    joblib.dump(kmeans, 'models/kmeans_model.pkl')
+
+    logging.info("Model saved successfully.")
+
+
+def store_to_bg(RFMT):
+    logging.info("Storing RFMT data to BigQuery Table...")
+    credentials = service_account.Credentials.from_service_account_file('configs/mlops-retail-quant-466be1b9ef88.json')
+    project_id = 'mlops-retail-quant'
+    dataset_table = 'retail_dataset.rfmt_table'
+
+    # Store RFMT in BigQuery
+    pandas_gbq.to_gbq(RFMT, dataset_table, project_id=project_id, if_exists='replace', credentials=credentials)
+
+if __name__ == "__main__":
+    df = load_data()
+    df_cleaned = clean_data(df)
+    rfmt = create_rfmt_features(df_cleaned)
+    rfmt_scaled = scale_rfmt_data(rfmt)
+    train_model(rfmt, rfmt_scaled)
+    store_to_bg(rfmt)
+
+
+
+
+
+
+

@@ -1,0 +1,8 @@
+Flask
+joblib
+pandas
+scikit-learn
+google-cloud-bigquery
+google-auth
+pandas-gbq
+google-api-python-client
