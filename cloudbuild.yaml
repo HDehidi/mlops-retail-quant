@@ -1,0 +1,26 @@
+steps:
+  # Build image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/mlops-retail-quant/retail-prediction-api:$SHORT_SHA', '.']
+
+  # Push image to container registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/mlops-retail-quant/retail-prediction-api:$SHORT_SHA']
+
+  # Deploy to cloudrun
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'retail-prediction-api'
+      - '--image'
+      - 'gcr.io/mlops-retail-quant/retail-prediction-api:$SHORT_SHA'
+      - '--platform'
+      - 'managed'
+      - '--region'
+      - 'me-central1'
+      - '--allow-unauthenticated'
+  
+images:
+  - 'gcr.io/mlops-retail-quant/retail-prediction-api:$SHORT_SHA'

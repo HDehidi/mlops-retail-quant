@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import numpy as np
 import pandas as pd
 from google.cloud import bigquery
 from google.oauth2 import service_account
@@ -11,14 +10,27 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import joblib
 import logging
+import os
+import yaml
 
 logging.basicConfig(level=logging.INFO)
+
+# Load configuration
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), '../configs/config.yaml')
+with open(CONFIG_PATH, 'r') as config_file:
+    config = yaml.safe_load(config_file)
+
+# Paths from configuration
+#GCP_CREDENTIALS_PATH = config['gcp']['credentials_path']
+PROJECT_ID = config['gcp']['project_id']
+DATASET_ID = config['gcp']['dataset_id']
+TABLE_ID = config['gcp']['table_id']
 
 
 def load_data():
     logging.info("Loading data from BigQuery...")
-    client = bigquery.Client(project="mlops-retail-quant")
-    query = "SELECT * FROM `mlops-retail-quant.retail_dataset.raw_data_table`"
+    client = bigquery.Client(project=PROJECT_ID)
+    query = f"SELECT * FROM `{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}`"
     df = client.query(query).to_dataframe()
     return df
 
@@ -87,11 +99,10 @@ def train_model(RFMT, rfmt_scaled):
 def store_to_bg(RFMT):
     logging.info("Storing RFMT data to BigQuery Table...")
     credentials = service_account.Credentials.from_service_account_file('configs/mlops-retail-quant-466be1b9ef88.json')
-    project_id = 'mlops-retail-quant'
-    dataset_table = 'retail_dataset.rfmt_table'
+    dataset_table = f'{DATASET_ID}.rfmt_table'
 
     # Store RFMT in BigQuery
-    pandas_gbq.to_gbq(RFMT, dataset_table, project_id=project_id, if_exists='replace', credentials=credentials)
+    pandas_gbq.to_gbq(RFMT, dataset_table, project_id=PROJECT_ID, if_exists='replace', credentials=credentials)
 
 if __name__ == "__main__":
     df = load_data()
