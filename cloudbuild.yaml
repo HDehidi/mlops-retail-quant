@@ -21,6 +21,6 @@ steps:
       - '--region'
       - 'me-central1'
       - '--allow-unauthenticated'
-  
-images:
-  - 'gcr.io/mlops-retail-quant/retail-prediction-api:$SHORT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
