@@ -21,6 +21,18 @@ steps:
       - '--region'
       - 'me-central1'
       - '--allow-unauthenticated'
+      
+  # Deploy to Model Registry
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud ai models upload \
+          --display-name="Kmeans_Model" \
+          --artifact-uri="gs://kmeans_model_bucket/model.pkl" \
+          --region="europe-central2" \
+          --container-image-uri="us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.0-24:latest"
 
 options:
   logging: CLOUD_LOGGING_ONLY
