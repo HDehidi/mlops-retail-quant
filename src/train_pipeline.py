@@ -4,6 +4,7 @@
 import pandas as pd
 from google.cloud import bigquery
 from google.oauth2 import service_account
+from google.cloud import storage
 import pandas_gbq
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
@@ -12,6 +13,10 @@ import joblib
 import logging
 import os
 import yaml
+import datetime
+
+
+version = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
 logging.basicConfig(level=logging.INFO)
 
@@ -21,10 +26,14 @@ with open(CONFIG_PATH, 'r') as config_file:
     config = yaml.safe_load(config_file)
 
 # Paths from configuration
-#GCP_CREDENTIALS_PATH = config['gcp']['credentials_path']
+
 PROJECT_ID = config['gcp']['project_id']
 DATASET_ID = config['gcp']['dataset_id']
 TABLE_ID = config['gcp']['table_id']
+BUCKET_NAME = "kmeans_model_bucket"
+#DEST_FILE_NAME = f"models/kmeans/model_{version}.pkl"
+DEST_FILE_NAME = "model.pkl"
+SOURCE_FILE_NAME = "models/kmeans/model.pkl"
 
 
 def load_data():
@@ -96,6 +105,15 @@ def train_model(RFMT, rfmt_scaled):
     logging.info("Model saved successfully.")
 
 
+def upload_to_gcs(bucket_name, source_file_name, dest_file_name):
+    logging.info("Uploading model to GCS...")
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(dest_file_name)
+    blob.upload_from_filename(source_file_name)
+    print(f"File {source_file_name} uploaded to {bucket_name}.")
+    
+    
 def store_to_bg(RFMT):
     logging.info("Storing RFMT data to BigQuery Table...")
     credentials = service_account.Credentials.from_service_account_file('configs/mlops-retail-quant-466be1b9ef88.json')
@@ -110,6 +128,7 @@ if __name__ == "__main__":
     rfmt = create_rfmt_features(df_cleaned)
     rfmt_scaled = scale_rfmt_data(rfmt)
     train_model(rfmt, rfmt_scaled)
+    upload_to_gcs(BUCKET_NAME, SOURCE_FILE_NAME, DEST_FILE_NAME)
     store_to_bg(rfmt)
 
 
