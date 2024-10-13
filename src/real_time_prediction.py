@@ -12,8 +12,8 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
 # Load the scaler and model
-scaler_model = joblib.load('models/scaler_model.pkl')
-kmeans_model = joblib.load('models/kmeans_model.pkl')
+scaler_model = joblib.load('scaler.pkl')
+kmeans_model = joblib.load('model.pkl')
 
 @app.route('/predict', methods=['POST'])
 def predict():
