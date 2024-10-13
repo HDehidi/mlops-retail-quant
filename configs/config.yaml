@@ -2,3 +2,4 @@ gcp:
   project_id: "mlops-retail-quant"
   dataset_id: "retail_dataset"
   table_id: "raw_data_table"
+  location: "europe-central2"
