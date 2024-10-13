@@ -77,7 +77,7 @@ def scale_rfmt_data(RFMT):
     logging.info("Scaling RFMT data...")
     scaler = StandardScaler()
     scaler = scaler.fit(RFMT)
-    joblib.dump(scaler, 'models/scaler_model.pkl')
+    joblib.dump(scaler, 'models/kmeans/scaler.pkl')
     logging.info("Scaler saved successfully.")
     
     rfmt_scaled = scaler.transform(RFMT)
@@ -91,7 +91,7 @@ def train_model(RFMT, rfmt_scaled):
 
     score = silhouette_score(rfmt_scaled, kmeans.labels_, metric='euclidean')
     logging.info(f"Silhouette Score: {score}")
-    joblib.dump(kmeans, 'models/kmeans_model.pkl')
+    joblib.dump(kmeans, 'models/kmeans/model.pkl')
 
     logging.info("Model saved successfully.")
 
