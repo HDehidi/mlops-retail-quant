@@ -30,7 +30,7 @@ steps:
       - |
         gcloud ai models upload \
           --display-name="Kmeans_Model" \
-          --artifact-uri="gs://kmeans_model_bucket/model.pkl" \
+          --artifact-uri="gs://kmeans_model_bucket/" \
           --region="europe-central2" \
           --container-image-uri="us-docker.pkg.dev/vertex-ai/prediction/sklearn-cpu.0-24:latest"
 
