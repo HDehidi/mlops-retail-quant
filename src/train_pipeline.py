@@ -111,7 +111,6 @@ def upload_to_gcs(bucket_name, source_file_name, dest_file_name):
     bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(dest_file_name)
     blob.upload_from_filename(source_file_name)
-    print(f"File {source_file_name} uploaded to {bucket_name}.")
     
     
 def store_to_bg(RFMT):
